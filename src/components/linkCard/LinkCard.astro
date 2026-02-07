@@ -1,0 +1,19 @@
+---
+type Props = {
+  href: string;
+  emoji: string;
+  title: string;
+  label?: string;
+};
+
+const { href, emoji, title, label } = Astro.props as Props;
+import linkCardStyle from './linkCard.css.ts';
+
+
+<a class={linkCardStyle.card} href={href} target="_blank" rel="noopener noreferrer">
+  <div class={linkCardStyle.emoji} aria-hidden="true">{emoji}</div>
+  <div class={linkCardStyle.content}>
+    <div class={linkCardStyle.title}>{title}</div>
+    {label ? <div class={linkCardStyle.label}>{label}</div> : null}
+  </div>
+</a>

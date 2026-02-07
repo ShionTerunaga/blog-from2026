@@ -1,0 +1,17 @@
+---
+import blogCardStyle from './blogCard.css.ts';
+type Props = {
+  href: string;
+  title: string;
+  emoji?: string;
+};
+
+const { href, title, emoji } = Astro.props as Props;
+const glyph = emoji ?? '📝';
+---
+
+
+<a class={blogCardStyle.card} href={href}>
+  <div class={blogCardStyle.glyph} aria-hidden="true">{glyph}</div>
+  <div class={blogCardStyle.title}>{title}</div>
+</a>

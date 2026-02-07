@@ -1,0 +1,44 @@
+---
+import { getCollection } from 'astro:content';
+import BaseHead from '../components/baseHead/BaseHead.astro';
+import BlogCard from '../components/blogCard/BlogCard.astro';
+import grid from '../components/blogGrid/blogGrid.css.ts';
+import indexStyles from '../styles/index.css.ts';
+import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
+import Header from '../components/header/Header.astro';
+
+const posts = (await getCollection('blog')).sort(
+	(a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
+);
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+	    <BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
+	</head>
+	<body>
+		<Header/>
+		<main>
+			<div class={indexStyles.intro}>
+				<div class={indexStyles.avatar} aria-hidden="true">
+					<img src="https://avatars.githubusercontent.com/u/69517378" alt="author avatar" />
+				</div>
+				<div class={indexStyles.bio}>
+					<p class={indexStyles.bioText}>てるし〜です。webアプリ開発をメインにしています。<br>好きな食べ物は焼きとんです。</p>
+				</div>
+			</div>
+			<section>
+				<ul class={grid.grid}>
+					{
+						posts.map((post) => (
+							<li class={grid.listItem}>
+								<BlogCard href={`/blog/${post.id}/`} title={post.data.title} emoji={post.data.heroImage}/>
+							</li>
+						))
+					}
+				</ul>
+			</section>
+		</main>
+	</body>
+</html>

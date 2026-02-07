@@ -1,0 +1,9 @@
+---
+import '../styles/global.css.ts';
+import BaseHeadComponent from './baseHead/BaseHead.astro';
+import IMG from '../../assets/icon.jpg';
+
+const { title, description, image = IMG } = Astro.props;
+---
+
+<BaseHeadComponent title={title} description={description} image={image} />
