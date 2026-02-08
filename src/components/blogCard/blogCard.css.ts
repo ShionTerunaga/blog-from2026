@@ -17,7 +17,7 @@ const card = style({
   border: "1px solid rgba(255,255,255,0.04)",
   transition: "transform 160ms ease, box-shadow 160ms ease",
   selectors: {
-    "&:hover, &:focus": {
+    "&:hover": {
       boxShadow: "0 0 15px 4px skyBlue",
       transform: "none",
     },
