@@ -100,6 +100,18 @@ globalStyle(`.${prose} h4`, {
 globalStyle(`.${prose} h5`, { fontSize: "1rem", fontWeight: 700 });
 globalStyle(`.${prose} h6`, { fontSize: "0.95rem", fontWeight: 700 });
 
+globalStyle(`.${prose} a:not([data-link-card])`, {
+  color: "#6ea8ff",
+  textDecorationColor: "rgba(110, 168, 255, 0.75)",
+  textUnderlineOffset: "0.14em",
+  textDecorationThickness: "0.1em",
+});
+
+globalStyle(`.${prose} a:not([data-link-card]):hover`, {
+  color: "#a6cbff",
+  textDecorationColor: "rgba(166, 203, 255, 0.95)",
+});
+
 export default {
   prose,
   heroImage,

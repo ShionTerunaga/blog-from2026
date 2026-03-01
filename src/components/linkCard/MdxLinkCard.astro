@@ -1,0 +1,52 @@
+---
+import LinkCard from "./LinkCard.astro";
+import { getOgp } from "../../utils/ogp";
+
+type Props = {
+  href?: string;
+  title?: string;
+};
+
+const { href = "", title, ...rest } = Astro.props as Props;
+const isExternal = /^https?:\/\//i.test(href);
+
+const slotHtml = await Astro.slots.render("default");
+const slotText = slotHtml.replace(/<[^>]*>/g, "").trim();
+const isMarkdownNamedLink = Boolean(slotText) && slotText !== href;
+
+let domain: string | undefined;
+let ogTitle: string | undefined;
+let ogDescription: string | undefined;
+let ogImage: string | undefined;
+
+if (isExternal && !isMarkdownNamedLink) {
+  try {
+    const url = new URL(href);
+    domain = url.hostname.replace(/^www\./, "");
+    const og = await getOgp(href);
+    ogTitle = og.title;
+    ogDescription = og.description;
+    ogImage = og.image;
+  } catch {
+    domain = undefined;
+  }
+}
+
+const cardTitle = ((ogTitle ?? title ?? slotText) || href).trim();
+---
+
+{
+  isExternal && !isMarkdownNamedLink ? (
+    <LinkCard
+      href={href}
+      title={cardTitle}
+      description={ogDescription}
+      image={ogImage}
+      domain={domain}
+    />
+  ) : (
+    <a href={href} {...rest}>
+      <slot />
+    </a>
+  )
+}

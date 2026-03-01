@@ -1,46 +1,93 @@
 import { style } from "@vanilla-extract/css";
 
 const card = style({
-  display: "inline-flex",
-  alignItems: "center",
-  gap: "12px",
-  padding: "12px 16px",
+  display: "flex",
+  flexDirection: "column",
+  gap: "8px",
+  width: "100%",
+  margin: "1rem 0",
+  padding: "12px",
   borderRadius: "12px",
   textDecoration: "none",
   color: "inherit",
-  background: "linear-gradient(180deg, rgba(var(--gray-light),0.9), #fff)",
-  boxShadow: "var(--box-shadow)",
-  transition: "transform 160ms ease, box-shadow 160ms ease",
-  border: "1px solid rgba(var(--gray), 0.06)",
+  background: "rgba(var(--gray-light), 0.22)",
+  boxShadow: "0 10px 22px rgba(0, 0, 0, 0.08)",
+  transition: "box-shadow 160ms ease, border-color 160ms ease",
+  border: "1px solid rgba(var(--gray), 0.14)",
   selectors: {
     "&:hover": {
-      boxShadow: "0 0 15px 4px skyBlue",
-      transform: "none",
+      boxShadow: "var(--box-shadow)",
+      borderColor: "rgba(var(--gray), 0.28)",
     },
   },
 });
 
-const emoji = style({
-  fontSize: "28px",
-  lineHeight: 1,
-  width: "40px",
-  height: "40px",
-  display: "grid",
-  placeItems: "center",
-  borderRadius: "10px",
-  background: "linear-gradient(180deg, #fff, rgba(var(--gray-light),0.8))",
+const main = style({
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "12px",
+  "@media": {
+    "screen and (max-width: 720px)": {
+      gap: "10px",
+    },
+  },
 });
 
-const content = style({});
+const content = style({
+  flex: 1,
+  minWidth: 0,
+});
 
-const title = style({ fontWeight: 700, fontSize: "0.98em" });
+const title = style({
+  display: "block",
+  fontWeight: 700,
+  fontSize: "0.95rem",
+  lineHeight: 1.3,
+});
 
-const label = style({
-  fontSize: "0.85em",
+const description = style({
+  display: "-webkit-box",
+  fontSize: "0.78rem",
+  lineHeight: 1.35,
   color: "rgb(var(--gray))",
-  marginTop: "2px",
+  marginTop: "4px",
+  overflow: "hidden",
+  WebkitLineClamp: 2,
+  WebkitBoxOrient: "vertical",
 });
 
-const linkCardStyle = { card, emoji, content, title, label };
+const domain = style({
+  display: "block",
+  fontSize: "0.76rem",
+  color: "rgb(var(--gray))",
+  marginTop: "6px",
+});
+
+const image = style({
+  width: "112px",
+  flexShrink: 0,
+  marginLeft: "auto",
+  height: "72px",
+  borderRadius: "8px",
+  objectFit: "cover",
+  backgroundColor: "rgba(var(--gray-light), 0.35)",
+  "@media": {
+    "screen and (max-width: 720px)": {
+      width: "96px",
+      height: "64px",
+    },
+  },
+});
+
+const linkCardStyle = {
+  card,
+  main,
+  content,
+  title,
+  description,
+  domain,
+  image,
+};
 
 export default linkCardStyle;

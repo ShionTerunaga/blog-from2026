@@ -1,19 +1,24 @@
 ---
 type Props = {
   href: string;
-  emoji: string;
   title: string;
-  label?: string;
+  description?: string;
+  image?: string;
+  domain?: string;
 };
 
-const { href, emoji, title, label } = Astro.props as Props;
+const { href, title, description, image, domain } = Astro.props as Props;
 import linkCardStyle from './linkCard.css.ts';
+---
 
 
-<a class={linkCardStyle.card} href={href} target="_blank" rel="noopener noreferrer">
-  <div class={linkCardStyle.emoji} aria-hidden="true">{emoji}</div>
-  <div class={linkCardStyle.content}>
-    <div class={linkCardStyle.title}>{title}</div>
-    {label ? <div class={linkCardStyle.label}>{label}</div> : null}
-  </div>
+<a class={linkCardStyle.card} href={href} target="_blank" rel="noopener noreferrer" data-link-card>
+  <span class={linkCardStyle.main}>
+    <span class={linkCardStyle.content}>
+      <span class={linkCardStyle.title}>{title}</span>
+      {description ? <span class={linkCardStyle.description}>{description}</span> : null}
+      {domain ? <span class={linkCardStyle.domain}>{domain}</span> : null}
+    </span>
+    {image ? <img class={linkCardStyle.image} src={image} alt="" loading="lazy" /> : null}
+  </span>
 </a>
