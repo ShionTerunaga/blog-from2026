@@ -112,6 +112,13 @@ globalStyle(`.${prose} a:not([data-link-card]):hover`, {
   textDecorationColor: "rgba(166, 203, 255, 0.95)",
 });
 
+globalStyle(`.${prose} blockquote`, {
+  borderLeft: "4px solid rgba(229, 233, 240, 0.6)",
+  margin: "1.5em 0",
+  paddingLeft: "16px",
+  color: "inherit",
+});
+
 export default {
   prose,
   heroImage,

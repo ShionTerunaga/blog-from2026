@@ -34,6 +34,22 @@ const siteTitle = style({
   fontWeight: 700,
 });
 
+const siteTitleLink = style([
+  siteTitle,
+  {
+    color: "#fff",
+    textDecoration: "none",
+    fontWeight: 700,
+    letterSpacing: "0.02em",
+    transition: "opacity 160ms ease",
+    selectors: {
+      "&:hover": {
+        opacity: 0.85,
+      },
+    },
+  },
+]);
+
 const internalLinks = style({
   display: "flex",
   gap: "8px",
@@ -92,6 +108,7 @@ const headerStyle = {
   nav,
   right,
   siteTitle,
+  siteTitleLink,
   internalLinks,
   iconLinks,
   iconButton,

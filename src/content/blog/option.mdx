@@ -1,0 +1,231 @@
+---
+title: "TypescriptでRustに出てくるOption型を再現してみる"
+description: ""
+pubDate: "Mar 04 2026"
+heroImage: "💁"
+---
+
+最近Rustの勉強から遠ざかってしまっていますが、`Option`の話はかなり賢明に覚えています。
+この`Option`を取り入れてみたいと思い、Typescriptで再現してみました。
+
+## nullは「10億ドルの損失」と言われた
+
+Rustの`Option`の話をするにあたって、まずは`null`について触れておきたいと思います。
+`Option`の話は[The Rust Programming Language](https://doc.rust-jp.rs/book-ja/)では、[enumの章](https://doc.rust-jp.rs/book-ja/ch06-01-defining-an-enum.html#option-enum%E3%81%A8null%E5%80%A4%E3%81%AB%E5%8B%9D%E3%82%8B%E5%88%A9%E7%82%B9)で出てきますが、`null`の話を少し触れています。
+
+最近作られた言語では`null`を見かけなくなりました。
+
+`null`を作った人はTony Hoareという人です。
+Tony Hoareはクイックソートアルゴリズムで有名な人です。
+
+HoareはALGOL Wに`null`を導入しました。
+理由は、
+
+> simply because it was so easy to implement
+
+つまり「実装が単純だったから」だそうです。
+
+しかし、無数のエラーや脆弱性、そしてシステムクラッシュを引き起こすことになりました。
+
+彼は`null`を「billion-dollar mistake」と呼び、`null`を作ったことを後悔しました。
+
+詳しくは以下の文献を参照してください
+
+https://dev.to/joelnet/null-the-billion-dollar-mistake-maybe-just-nothing-1cak?utm_source=chatgpt.com
+
+https://hinchman-amanda.medium.com/null-pointer-references-the-billion-dollar-mistake-1e616534d485
+
+## nullが引き起こす問題の例
+
+私が知る限りの`null`が引き起こす問題の例を挙げてみます。
+
+### NullPointerException
+
+例えば、Javaをやっている人がいたら遭遇したことはあるかもしれないです。NullPointerException(よく「ヌルポ」と呼ばれるエラー)です。
+
+```java
+String str = null;
+System.out.println(str.length());
+```
+
+このコードは`NullPointerException`を引き起こします。
+Javaはコンパイルをしますが、上記のコードはコンパイル時にエラーにはなりません。
+結果、実行した時にエラーとなりプログラムを止めてしまいます。
+
+個人的には、コンパイルの段階でエラーを出してほしいと思っています。
+
+またこれはJavaに限った話ではなく、Javascriptでも同様のエラーが起こります。
+
+```javascript
+let str = null;
+console.log(str.length);
+```
+
+Javaでは最近は`Optional`を使って`null`を回避することができますし、Javascript系統でもTypescriptを使用し
+null許容等をすることで回避することが可能です。
+
+しかし、Typescriptであっても罠はあります。
+
+### Typescriptにおけるnullの罠
+
+仮にTypescriptを使っていたとしてもハンドリングを誤るとバグが起こってしまいます。
+優秀なプログラマーなら別に大したことはないと思いますが、以下のようなケースだとバグが起こる可能性があります。
+
+```typescript
+function getStatus(num: number | null): string {
+  if (!num) {
+    return "num is null";
+  }
+
+  return `num is ${num}`;
+}
+```
+
+このコードは、`num`が`null`のときだけでなく、`0`のときも`"num is null"`を返してしまいます。
+
+繰り返しますが、**優秀なプログラマーであればこのようなミス**はしないかもしれませんが、`null`を扱うときはこのような罠があることを知っておく必要があります。
+さらには、外部のライブラリを使っている際に、定義上は`null`となっていないのに何故か`null`が返ってきてしまうこともあります(`react-hook-form`とか)。
+単体テストを書いていればバグには気づくと思うので修正はその時点で気づくと思いますが、書いていないとバグの原因を探すのに時間がかかってしまいます。
+
+## RustのOption型
+
+Rustは`null`を持たない代わりに、`Option`という型を提供しています。
+`Option`は、値が存在するかどうかを表す列挙型で、以下のように定義されています。
+
+```rust
+enum Option<T> {
+    Some(T),
+    None,
+}
+```
+
+`Option`は、値が存在する場合は`Some(T)`で表され、存在しない場合は`None`で表されます。
+
+Rustはコンパイルが認識できるような形で表すことを考えました。
+私はとてもこれは良い考えだと思いドキュメントを読んだ時に感動しました。
+
+## TypescriptでOption型(のようなもの)を再現
+
+```typescript
+const basic = {
+  OPTION_SOME: "some",
+  OPTION_NONE: "none",
+} as const;
+
+interface Some<T> {
+  readonly kind: typeof basic.OPTION_SOME;
+  readonly isSome: true;
+  readonly isNone: false;
+  readonly value: T;
+}
+
+interface None {
+  readonly kind: typeof basic.OPTION_NONE;
+  readonly isSome: false;
+  readonly isNone: true;
+}
+
+export type Option<T> = Some<NonNullable<T>> | None;
+```
+
+今後の拡張のために、`isSome`や`isNone`のようなプロパティも追加しました。
+
+`null`や`undefined`を許さないようにしているので`NonNullable`を使っています。
+
+ちなみに、
+
+```typescript
+type NonNullable<T> = T & {};
+```
+
+らしいです。
+
+## Option型を作成する関数
+
+```typescript
+export const optionUtility = (function () {
+  const { OPTION_SOME, OPTION_NONE } = basic;
+
+  const createSome = <T>(value: NonNullable<T>): Option<T> => {
+    return Object.freeze({
+      kind: OPTION_SOME,
+      isSome: true,
+      isNone: false,
+      value,
+    });
+  };
+
+  const createNone = (): Option<never> => {
+    return Object.freeze({
+      kind: OPTION_NONE,
+      isSome: false,
+      isNone: true,
+    });
+  };
+
+  const optionConversion = <T extends NonNullable<unknown>>(
+    value: T | null | undefined,
+  ): Option<T> => {
+    if (isNull(value) || isUndefined(value)) {
+      return createNone();
+    }
+
+    return createSome(value);
+  };
+
+  return Object.freeze({
+    createSome,
+    createNone,
+    optionConversion,
+  });
+})();
+```
+
+毎回`Option`のオブジェクトを作るのは大変なのでこのような関数を作っておきました。
+即時関数にした理由はその時の気分で書いていたので特に理由はありません。
+
+作った時はこれで良いと思ってましたが、なんか違う気もしたので今後作り直すことがあると思います。
+
+## 使い方
+
+```typescript
+const value1: Option<number> = optionUtility.createSome(42);
+const value2: Option<string> = optionUtility.createNone();
+const value3: Option<string> = optionUtility.optionConversion(
+  process.env.SOME_ENV_VAR,
+);
+
+if (value1.isSome) {
+  console.log(value1.value); // 42
+}
+
+if (value2.isNone) {
+  console.log("value2 is none"); // value2 is none
+}
+
+if (value3.isSome) {
+  console.log(value3.value); // SOME_ENV_VARの値
+} else {
+  console.log("value3 is none"); // SOME_ENV_VARがnullまたはundefinedの場合
+}
+```
+
+使い方としては上記のようになります。
+特に環境変数などは`undefined`の可能性もあるのですが、ハンドリングを怠ってしまうとバグの原因になってしまうので個人的には良いやり方かなと思ってます。
+
+## メリット
+
+メリットとしては、ハンドリングの強制力があることです。
+`null`でもハンドリングをすれば良いのですが、忘れることもありますし`value != null`と書かずに`!value`と書いてしまうこともあり、そこでバグを起こすこともあるかと思います。
+`null`だけではなく`undefined`も同様のことが起こりうるでしょう。
+とはいえ、正式な値を取得するには`isSome`や`isNone`を使う必要があるのでミスは減りますし、コードが明示的で個人的には好きです。
+
+プロジェクトによってやり方は変わってくるとは思いますし、Typescriptを使わなくてもフロントエンドは書けるので、必ずしもこのやり方が正しいとは思いませんが、バグを少なくする1つの方法としては良いのではないかと感じています。
+
+## まとめ
+
+今回は、Rustの`Option`型をTypescriptで再現した話でした。
+ハンドリングを怠るとバグの原因になります。
+ハンドリングを強制する仕組みをあらかじめ作っておくことで、ハンドリングの怠りといったことはなくなるでしょう。
+
+とはいえ、これは個人的にいいなと思っているものなので参考にするものしないもあなた次第です。
