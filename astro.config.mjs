@@ -6,9 +6,11 @@ import { vanillaExtractPlugin } from "@vanilla-extract/vite-plugin";
 import { defineConfig } from "astro/config";
 import cloudflare from "@astrojs/cloudflare";
 
+const site = process.env.SITE_URL ?? "https://example.com";
+
 // https://astro.build/config
 export default defineConfig({
-  site: "https://example.com",
+  site,
   integrations: [mdx(), sitemap()],
 
   vite: {
