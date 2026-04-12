@@ -1,0 +1,244 @@
+---
+title: "Typescriptの型アサーションいつ使う？"
+description: ""
+pubDate: "Apr 12 2026"
+heroImage: "👨🏻‍💻"
+---
+
+Typescriptを書いていると型アサーション`as`を使う場面は出てくると思う。
+この`as`は使い所を間違えると危険な場合があります。
+じゃあ危険だから使わない方が良いのかと言われればそうではないと思います。
+
+## 型アサーションとは
+
+サバイバルTypescriptを引用すると、
+
+> 型推論を上書きする機能
+
+と書いてあります。
+
+```ts
+const value: unknown = "hello";
+
+const str = value as string;
+console.log(str.length);
+```
+
+`str`という値は`unknown`という型の`value`が代入されていますが、これを`string`の**型として**扱うといった意味合いになると私自身は解釈しています。
+
+## 型アサーションを使う場面ではない
+
+### 1. formでの送信後の処理
+
+```tsx
+interface ProfileForm {
+  name: string;
+  age: number;
+  subscribed: boolean;
+}
+
+export function Profile() {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    const formData = new FormData(e.currentTarget);
+
+    const values = {
+      name: formData.get("name"),
+      age: formData.get("age"),
+      subscribed: formData.get("subscribed"),
+    } as ProfileForm;
+
+    console.log(values.age + 1);
+    if (values.subscribed) {
+      console.log("購読中");
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input name="name" />
+      <input name="age" type="number" />
+      <input name="subscribed" type="checkbox" />
+      <button type="submit">送信</button>
+    </form>
+  );
+}
+```
+
+このコードの問題点は以下です。
+
+- `formData.get()`の戻り値は`FormDataEntryValue | null`であり、最初から`string`や`number`や`boolean`ではありません
+- `as ProfileForm`は値を変換しているわけではなく、TypeScriptに対して「これは`ProfileForm`です」と言っているだけです
+- `age`は`<input type="number" />`でもsubmit後は`number`ではなく文字列です
+- `subscribed`は`boolean`ではなく、チェックされていれば`"on"`、未チェックなら`null`です
+- `name`や`age`が未入力なら`null`になる可能性があります
+- `values.age + 1`は数値計算のつもりでも、実際には文字列結合になってしまう可能性があります
+- `if (values.subscribed)`も`boolean`を扱っているわけではなく、文字列のtruthy判定に依存しています
+- 本来であれば型エラーで気づけるはずの危険を、`as`が握りつぶしてしまいます
+
+つまり、外部から受け取った値を何も検証していないのに、安全な型として扱ってしまっているのが問題です。
+特にsubmit直後はI/Oの境界なので、`as`で押し切るのはかなり危険です。
+
+考え方としては`formData.get()`で受け取った値をそのまま信用するのはよろしくありません。
+なので必ず検証することを推奨します。
+
+**ライブラリを使わない場合には**
+
+- `typeof`で`string`かどうかを確認する
+- 数値項目は`Number()`などで明示的に変換する
+- `Number.isNaN()`で不正な値ではないかを確認する
+
+などです。
+
+```ts
+if (typeof value === "string") {
+  throw Error("type error");
+}
+```
+
+や
+
+```ts
+function isString(value: unknown): value is string {
+  return typeof value === "string";
+}
+```
+
+といった形で表すことができます。
+
+**ライブラリを使う**とすれば`zod`や`valibot`を使うと良いかと思います。
+
+https://zod.dev/
+
+https://valibot.dev/
+
+ちなみに、私は最近はバンドルサイズやツリーシェイキングの面から`valibot`を使うようにしています。
+
+### 2. APIからデータを取得する処理
+
+```typescript
+const res = await fetch("http://onakahetta.com");
+
+const data = res.json() as Food;
+```
+
+このコードも同じように危険です。
+
+- `json()`で返ってくる値は外部から来た不確実なデータです
+- `as Food`を付けても、レスポンスの中身が`Food`の構造になるわけではありません
+- APIの仕様変更や不正なレスポンスがあっても、TypeScript上では`Food`として扱えてしまいます
+- 必須プロパティが欠けていてもコンパイル時には気づけず、実行時エラーの原因になります
+- これもI/O境界で`as`を使って型チェックをすり抜けている例です
+
+APIレスポンスもformと同様に、そのまま信用するべきではありません。
+
+- `await res.json()`で未知のデータとして受け取る
+- その後にプロパティの有無や型を確認する
+- 必要であれば型ガードやバリデーションライブラリを使う
+
+フォーム処理と同様に型チェックやバリデーションチェックはしっかりと行うことが大事です。
+
+外から入ってくる値に対して`as`を使うと、安心感だけが生まれて実際の安全性は上がりません。
+I/O境界では、型を主張する前に値を検証することが大切です。
+
+では、`as`は使うべきではないのでしょうか？
+
+## 使うべきケース
+
+asは使うべきではないわけではなく使うべきケースもあります。
+それは明らかに誰がみてもその型だと確信できる時です。
+
+### 例1
+
+```ts
+function getValue(hoge: string | number): string | number {
+  if (typeof hoge === "string") {
+    return hoge;
+  }
+
+  return hoge + 1;
+}
+
+const value = getValue("hoge") as string;
+
+const valueLength = value.length;
+```
+
+あまりこのようなことはやらないかもしれないですが、この場合、`as`を使っても問題ないです。
+
+逆に`as`を使わず、
+
+```ts
+const value = getValue("hoge");
+
+if (typeof value === "string") {
+  throw new Error("type error");
+}
+
+const valueLength = value.length;
+```
+
+とした場合、型ガードをする部分は無駄な処理となってしまいます。
+
+`getValue`関数は引数が`string`の場合は`string`として値が返ってきて`number`の場合は`number`が返ってくるということがわかっています。
+つまり、この時点で開発者が値の振る舞いを把握できており、外部から不確実な値が入ってくるケースとは性質が違います。
+
+不安な場合は、テストコードを書くと良いと思います。
+
+### 例2
+
+```tsx
+/**
+ * props定義の時に使う
+ */
+type CheckerProps<T, TExpect, TError extends string> = T &
+  (Exclude<keyof T, keyof TExpect> extends never ? object : TError);
+
+interface Props {
+  as?: Extract<ElementType, "div" | "section" | "article" | "main" | "p">;
+  className?: string;
+  style?: Omit<CSSProperties, "center">;
+  children: ReactNode;
+}
+
+export function FontCenter<T extends Props>(
+  props: CheckerProps<T, Props, "fontCenter has not any props.">,
+) {
+  const { as = "p", className, ...rest } = props as Props;
+
+  const Component = as;
+
+  const cn = classMerger(["text-center", className ?? ""]);
+
+  const asProps = {
+    className: cn,
+    ...rest,
+  };
+
+  return <Component {...asProps} />;
+}
+```
+
+ここでもasは使われていますが、これは危険ではないシチュエーションです。
+
+`CheckerProps`では余計なスキームがあった場合にはstring型としてエラーにするといった型になります。
+
+https://zenn.dev/kagaya_22/articles/1887a1b5f90a4a
+
+こちらの記事を参考にしました。
+
+Typescriptのコンパイラは`string`か`Props`かのどちらかの可能性があるということで`...rest`が使えずエラーになるといった認識です。
+ですがここで型チェックのロジック書いてしまうと無駄な処理となってしまいます。
+
+## まとめ
+
+型アサーションは無闇に使ってはいけないですし、だからといって使ってはいけないというわけではないと思っています。
+危険な部分は型チェックのロジックを入れて、型チェックの意味を成しておらず無駄が発生している場合には`as`で賄うというのが良いやり方だと思っています。
+
+サバイバルTypescriptには、
+
+> 型に関することはできるだけ、コンパイラーの型推論に頼ったほうが安全なので、型アサーションは、やむを得ない場合にのみ使うべきです。
+
+とかいてあります。
+`as`を使う場合に責任が伴うのでどの場面で使うべきかはチームで定めておく必要があるでしょう。

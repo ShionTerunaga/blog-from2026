@@ -1,5 +1,5 @@
 {
-	"main": "dist/_worker.js/index.js",
+	"main": "@astrojs/cloudflare/entrypoints/server",
 	"name": "blog-from-2026",
   "compatibility_date": "2026-02-07",
   "compatibility_flags": [

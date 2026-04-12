@@ -8,8 +8,7 @@ const ogpCache = new Map<string, Promise<OgpData>>();
 
 function parseAttributes(tag: string): Record<string, string> {
   const attrs: Record<string, string> = {};
-  const attrRegex =
-    /([^\s=/>]+)\s*=\s*("([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/g;
+  const attrRegex = /([^\s=/>]+)\s*=\s*("([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/g;
 
   for (const match of tag.matchAll(attrRegex)) {
     const key = match[1].toLowerCase();
