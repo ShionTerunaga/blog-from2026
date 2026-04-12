@@ -4,7 +4,6 @@ import mdx from "@astrojs/mdx";
 import sitemap from "@astrojs/sitemap";
 import { vanillaExtractPlugin } from "@vanilla-extract/vite-plugin";
 import { defineConfig } from "astro/config";
-import cloudflare from "@astrojs/cloudflare";
 
 const site = process.env.SITE_URL ?? "https://example.com";
 
@@ -16,6 +15,4 @@ export default defineConfig({
   vite: {
     plugins: [vanillaExtractPlugin()],
   },
-
-  adapter: cloudflare(),
 });
