@@ -72,6 +72,7 @@ globalStyle(
   `.${prose} h1, .${prose} h2, .${prose} h3, .${prose} h4, .${prose} h5, .${prose} h6`,
   {
     color: "inherit",
+    paddingBottom: "0.25em",
   },
 );
 
@@ -117,6 +118,7 @@ globalStyle(`.${prose} blockquote`, {
   margin: "1.5em 0",
   paddingLeft: "16px",
   color: "inherit",
+  fontSize: "1em",
 });
 
 export default {
