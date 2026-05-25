@@ -2,6 +2,13 @@
 import '../styles/global.css.ts';
 import BaseHeadComponent from './baseHead/BaseHead.astro';
 import IMG from '../../assets/icon.jpg';
+import type { ImageMetadata } from 'astro';
+
+interface Props {
+  title: string;
+  description: string;
+  image?: ImageMetadata | string;
+}
 
 const { title, description, image = IMG } = Astro.props;
 ---
