@@ -34,15 +34,36 @@ globalStyle(`.${prose} pre`, {
   color: "#d4d4d4",
   padding: "1rem",
   borderRadius: "8px",
+  border: "1px solid rgba(255, 255, 255, 0.08)",
+  boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.04)",
   overflow: "auto",
   fontFamily:
     "ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', 'Courier New', monospace",
   fontSize: "0.95rem",
+  lineHeight: 1.7,
 });
 
-globalStyle(`.${prose} pre code, .${prose} code`, {
+globalStyle(`.${prose} pre code`, {
   background: "transparent",
   color: "inherit",
+  padding: 0,
+  border: "none",
+  borderRadius: 0,
+  fontSize: "inherit",
+});
+
+globalStyle(`.${prose} :not(pre) > code`, {
+  display: "inline-block",
+  padding: "0.18em 0.55em",
+  margin: "0 0.2em",
+  borderRadius: "6px",
+  border: "1px solid rgba(255, 255, 255, 0.12)",
+  background: "rgba(255, 255, 255, 0.08)",
+  color: "#ffd98e",
+  fontSize: "0.9em",
+  lineHeight: 1.4,
+  fontFamily:
+    "ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', 'Courier New', monospace",
 });
 
 globalStyle(
