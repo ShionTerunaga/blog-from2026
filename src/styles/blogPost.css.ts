@@ -32,6 +32,7 @@ globalStyle(`.${heroImage} img`, {
 globalStyle(`.${prose} pre`, {
   background: "#1e1e1e",
   color: "#d4d4d4",
+  margin: "1.25rem 0 2rem",
   padding: "1rem",
   borderRadius: "8px",
   border: "1px solid rgba(255, 255, 255, 0.08)",
