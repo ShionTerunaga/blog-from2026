@@ -18,7 +18,7 @@ const title = style({
   textAlign: "center",
   lineHeight: 1,
 });
-const date = style({ marginBottom: "0.5em", color: "rgb(var(--gray))" });
+const date = style({ marginBottom: "1rem", color: "rgb(var(--gray))" });
 const lastUpdatedOn = style({ fontStyle: "italic" });
 
 globalStyle(`.${heroImage} img`, {
@@ -107,13 +107,15 @@ globalStyle(`.${prose} h1`, {
 globalStyle(`.${prose} h2`, {
   fontSize: "1.4rem",
   fontWeight: 700,
-  margin: "0 0 0.5rem 0",
+  margin: "2.5rem 0 1rem 0",
+  paddingBottom: "0.4rem",
+  borderBottom: "1px solid rgba(229, 233, 240, 0.28)",
   lineHeight: 1.2,
 });
 globalStyle(`.${prose} h3`, {
   fontSize: "1.25rem",
   fontWeight: 700,
-  margin: "0 0 0.5rem 0",
+  margin: "2rem 0 0.75rem 0",
   lineHeight: 1.25,
 });
 globalStyle(`.${prose} h4`, {

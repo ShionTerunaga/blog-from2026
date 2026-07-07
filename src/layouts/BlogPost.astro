@@ -22,6 +22,7 @@ const { title, description, pubDate, updatedDate } = Astro.props;
 			<article>
 				<div class={blogPostStyles.prose}>
 					<div class={blogPostStyles.title}>
+						<h1>{title}</h1>
 						<div class={blogPostStyles.date}>
 							<FormattedDate date={pubDate} />
 							{
@@ -32,7 +33,6 @@ const { title, description, pubDate, updatedDate } = Astro.props;
 								)
 							}
 						</div>
-						<h1>{title}</h1>
 						<hr />
 					</div>
 					<slot />
