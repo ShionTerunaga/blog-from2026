@@ -138,8 +138,10 @@ TypeScriptは、実行時に型情報を残すのではなく、コンパイル�
 
 TypeScriptは型情報を使ってチェックはするもののその情報を使ってJavaScriptの実行における検査処理や変換処理を行わない。
 
-決してTypeScriptのコードから
-
+```ts
+const user: User = getUser();
+```
+に対して決して
 ```js
 if(!isUser(user)) {
   throw Error("その型ちゃうで");
