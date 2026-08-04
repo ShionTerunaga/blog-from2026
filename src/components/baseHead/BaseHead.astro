@@ -3,7 +3,6 @@
 // all pages through the use of the <BaseHead /> component.
 import '../../styles/global.css.ts';
 import { SITE_TITLE } from '../../consts';
-import defaultOgpImage from '../../assets/icon.jpg';
 import type { ImageMetadata } from 'astro';
 
 interface Props {
@@ -14,8 +13,11 @@ interface Props {
 
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 
-const { title, description, image = defaultOgpImage } = Astro.props;
-const imagePath = typeof image === 'string' ? image : image.src;
+const { title, description, image } = Astro.props;
+const blogSlug = Astro.url.pathname.match(/^\/blog\/([^/]+)\/?$/)?.[1];
+const defaultImagePath = blogSlug ? `/og/${blogSlug}.png` : '/og/index.png';
+const resolvedImage = image ?? defaultImagePath;
+const imagePath = typeof resolvedImage === 'string' ? resolvedImage : resolvedImage.src;
 const imageURL = new URL(imagePath, Astro.url);
 ---
 

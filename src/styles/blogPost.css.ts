@@ -145,6 +145,86 @@ globalStyle(`.${prose} blockquote`, {
   fontSize: "1em",
 });
 
+globalStyle(`.${prose} .callout`, {
+  margin: "1.75rem 0",
+  padding: "1rem 1.1rem 1.05rem",
+  border: "1px solid",
+  borderRadius: "10px",
+  color: "#eaeaea",
+  boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.04)",
+});
+
+globalStyle(`.${prose} .callout--info`, {
+  borderColor: "rgba(94, 174, 255, 0.52)",
+  background: "rgba(38, 112, 180, 0.14)",
+});
+
+globalStyle(`.${prose} .callout--warning`, {
+  borderColor: "rgba(245, 190, 75, 0.56)",
+  background: "rgba(158, 109, 15, 0.16)",
+});
+
+globalStyle(`.${prose} .callout--alert`, {
+  borderColor: "rgba(244, 102, 112, 0.56)",
+  background: "rgba(164, 46, 58, 0.16)",
+});
+
+globalStyle(`.${prose} .callout__title`, {
+  display: "flex",
+  alignItems: "center",
+  gap: "0.55rem",
+  margin: "0 0 0.45rem",
+  fontSize: "0.9rem",
+  fontWeight: 700,
+  lineHeight: 1.4,
+  letterSpacing: "0.02em",
+});
+
+globalStyle(`.${prose} .callout__title::before`, {
+  width: "1.3rem",
+  height: "1.3rem",
+  display: "grid",
+  placeItems: "center",
+  border: "1.5px solid currentColor",
+  borderRadius: "50%",
+  fontSize: "0.78rem",
+  lineHeight: 1,
+});
+
+globalStyle(`.${prose} .callout--info .callout__title`, {
+  color: "#8bc7ff",
+});
+
+globalStyle(`.${prose} .callout--info .callout__title::before`, {
+  content: "i",
+  fontFamily: "Georgia, serif",
+  fontWeight: 700,
+});
+
+globalStyle(`.${prose} .callout--warning .callout__title`, {
+  color: "#f5c968",
+});
+
+globalStyle(`.${prose} .callout--warning .callout__title::before`, {
+  content: "!",
+});
+
+globalStyle(`.${prose} .callout--alert .callout__title`, {
+  color: "#ff8f98",
+});
+
+globalStyle(`.${prose} .callout--alert .callout__title::before`, {
+  content: "!",
+});
+
+globalStyle(`.${prose} .callout > :last-child`, {
+  marginBottom: 0,
+});
+
+globalStyle(`.${prose} .callout > .callout__title + p`, {
+  marginTop: 0,
+});
+
 export default {
   prose,
   heroImage,

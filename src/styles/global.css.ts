@@ -15,14 +15,16 @@ globalFontFace("Atkinson", {
 });
 
 globalStyle(":root", {
-  "--accent-dark": "#000d8a",
-  "--black": "15, 18, 25",
-  "--gray": "96, 115, 159",
-  "--gray-light": "229, 233, 240",
-  "--gray-dark": "34, 41, 57",
-  "--gray-gradient": "rgba(229, 233, 240, 50%), #fff",
-  "--box-shadow":
-    "0 2px 6px rgba(96,115,159,0.25), 0 8px 24px rgba(96,115,159,0.33), 0 16px 32px rgba(96,115,159,0.33)",
+  vars: {
+    "--accent-dark": "#000d8a",
+    "--black": "15, 18, 25",
+    "--gray": "96, 115, 159",
+    "--gray-light": "229, 233, 240",
+    "--gray-dark": "34, 41, 57",
+    "--gray-gradient": "rgba(229, 233, 240, 50%), #fff",
+    "--box-shadow":
+      "0 2px 6px rgba(96,115,159,0.25), 0 8px 24px rgba(96,115,159,0.33), 0 16px 32px rgba(96,115,159,0.33)",
+  },
 });
 
 globalStyle("body", {
@@ -86,9 +88,12 @@ globalStyle("hr", {
   borderTop: "1px solid rgb(var(--gray-light))",
 });
 
-globalStyle("@media (max-width: 720px)", {
-  body: { fontSize: "18px" },
-  main: { padding: "1em" },
+globalStyle("body", {
+  "@media": { "screen and (max-width: 720px)": { fontSize: "18px" } },
+});
+
+globalStyle("main", {
+  "@media": { "screen and (max-width: 720px)": { padding: "1em" } },
 });
 
 globalStyle(".sr-only", {

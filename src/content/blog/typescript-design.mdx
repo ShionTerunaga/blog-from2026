@@ -1,0 +1,204 @@
+---
+title: "TypeScript Design Goals"
+description: ""
+pubDate: "Aug 5 2026"
+heroImage: "🐞"
+---
+
+:::info
+これは人間により作成されましたが、AIと壁打ちして書かれているところが多々あります。私の頭ではAIなしでは考察にすらならなかったのでそのような形を取りました。
+:::
+
+
+TypeScriptはコンパイルしたらJavaScriptに変換するAltJSの一種である。
+最近、TypeScriptはネイティブ実装になり、コンパイル速度がとても早くなった。
+そんな熱々なTypeScriptを仕事や個人の開発で使用している。
+今まで堅牢なTypeScriptを作るためにということを頭に入れてきた。
+TypeScriptは堅牢にもできるしその逆も可能である。
+私は思った。
+「どうして、堅牢な型システムを言語単位でやらないのか」
+もしかしたら、このことについてを思っている人はいるのではないだろうか。
+今回はTypeScriptを使う上でのモチベーションと言語側は何を目的にしているのかを見ていこうと思う。
+
+## そもそもこのような話をしようと思ったのか
+
+ある時仕事で、`tsconfig.json`の相違によって起こったバグがあった。
+`noUncheckedIndexedAccess`である。
+普段`tsconfig.json`の設定をあまり気にしない私はこれがなんなのかすらわかっていなかった。
+たまたま、これが`true`になっており、型チェックの部分でエラーが出てしまった。
+
+`noUncheckedIndexedAccess`をtrueにすることで、配列を添え字を指定した際に`undefined`である可能性があることを型で知らせてくれる。
+
+```ts
+const arr = ["ラーメン", "やきとん", "刺身"];
+const val = arr[3]; // string | undefined
+```
+
+これが仮に、
+
+```ts
+function getFood(index: number): string {
+  const arr = ["ラーメン", "やきとん", "刺身"];
+  const val = arr[index]; // string | undefined
+
+  return val;
+}
+```
+
+だとした場合、`noUncheckedIndexedAccess`がtrueだった場合は型エラーになる。
+型エラー解消には、
+
+```ts
+function getFood(index: number): string {
+  const arr = ["ラーメン", "やきとん", "刺身"];
+  const val = arr[index]; // string | undefined
+
+  if (val === undefined) {
+    throw new Error("0から2の数字を入れてください");
+  }
+
+  return val;
+}
+```
+などにする必要がある。
+そもそも範囲外の添え字を指定すると`undefined`が返ってくるにで場合によってはバグの温床となってしまう。
+TypeScriptではこの機能をデフォルトで`true`にして良いのではないかと私は思った。
+AIと壁打ちする中で色々とissueやPRで理由を提示してくれたがTypeScriptのwikiを提示してくれた。
+それがTypeScript Design Goalsだった。私はそこに書いてある内容に興味を持った。
+
+## TypeScript Design Goals
+
+TypeScriptの設計思想は、公式Wikiの「TypeScript Design Goals」にまとめられている。
+
+https://github.com/microsoft/TypeScript/wiki/TypeScript-Design-Goals
+
+私は英語が読めないので翻訳こんにゃくを使って読んでいる。
+ここには、TypeScriptのGoalとGoalsとNon-goalsがそれぞれ記載されている。
+実際にその中身をいくつか見ていくことにする。
+
+### エラーになりそうなコードを、実行前に見つける
+
+> Statically identify constructs that are likely to be errors.
+
+これは、プログラムを実行する前に、バグにつながる可能性が高いコードをTypeScriptの型チェックによって見つけるという意味である。
+
+たとえば、存在しないプロパティへのアクセスや、関数が期待する型とは異なる値の受け渡しなどを静的に検出する。
+
+```ts
+interface User {
+  name: string;
+};
+
+const user: User = {
+  name: "Taro",
+};
+
+console.log(user.age);
+```
+
+`User`型には`age`というプロパティが存在しないため、TypeScriptはこのコードを実行する前に型エラーとして検出する。
+
+また、次のようなコードも検出できる。
+
+```ts
+function double(value: number) {
+  return value * 2;
+}
+
+double("10");
+```
+
+`double`は`number`を受け取る関数だが、`string`を渡しているため型エラーになる。
+
+このようにTypeScriptは、実行時に失敗する可能性が高いコードの構造を、コンパイル時の静的解析によって見つけることを目標としている。
+
+
+### 一貫性があり、完全に消去可能な構造的型システムを使用する
+
+> Use a consistent, fully erasable, structural type system.
+
+TypeScriptの型情報は、基本的にJavaScriptへの変換時にすべて取り除けるようにする。
+
+```ts
+const user: User = getUser();
+```
+
+というものがあった場合には、
+
+```js
+const user = getUser();
+```
+
+と、`: User`を省くのみの形でJavaScriptに変換される。
+TypeScriptは、実行時に型情報を残すのではなく、コンパイル時に構造をもとに型を確認し、その型情報をJavaScriptへの出力時に取り除く設計を目指している。
+
+### 出力されるプログラムに実行時オーバーヘッドを課さない
+
+> Impose no runtime overhead on emitted programs.
+
+TypeScriptは型情報を使ってチェックはするもののその情報を使ってJavaScriptの実行における検査処理や変換処理を行わない。
+上記のセクションで述べたが、TypeScriptはJavaScriptに型を削除する
+
+決してTypeScriptのコードから。
+
+```js
+if(!isUser(user)) {
+  throw Error("その型ちゃうで");
+} 
+```
+
+というコードが生成されることはない。
+
+もし、このような実行時の型検査を行いたい場合は、開発者が明示的に実装する必要がある。
+TypeScriptは型情報を使ってコンパイル時に静的な型チェックを行うが、その型情報に基づいた検査処理や変換処理を、実行時のJavaScriptへ自動的に追加することはしない。
+
+### 堅牢な型システムは目指さない
+
+> Apply a sound or “provably correct” type system. Instead, strike a balance between correctness and productivity.
+
+日本語に訳すと
+
+> 「証明可能な正しさ」を備えた型システムを採用するのではなく、正しさと生産性のバランスを取る。
+
+である。
+
+Goalsの方には
+
+> Statically identify constructs that are likely to be errors.
+
+日本語に訳すと
+
+> エラーとなる可能性が高い構文を静的に特定する。
+
+TypeScriptは、エラーになりそうなコードを静的に見つけることをGoalsの一つとしている。
+
+一方で、型チェックを通過したプログラムの正しさを完全に保証できる、健全な型システムを作ることは目標としていない。
+
+つまり、TypeScriptは型によってバグを見つけやすくすることを目指しているが、あらゆる危険なコードを禁止するところまでは目指していない。正しさだけでなく、JavaScriptの柔軟性や開発のしやすさとのバランスを取っている。
+
+## 考察・まとめ
+
+### JavaScriptライクな記法
+
+TypeScriptは型情報を元にJavaScriptのランタイムで検証処理などは書かず、ほぼ型の情報を取り除くだけで良いようになっており変換後のJavaScriptが人が書いたようなソースコードになるように設計されている。実際に私が書いていて、JavaScriptに型を付けたものであるように感じている。TypeScriptはAltJSの一つであると最初に記載をしたが、AltJSには他の言語も存在する。elmやpurescriptであったりと。その中でもTypeScriptがJavaScriptライクな記法なことでJavaScriptプログラマが参入しやすい状況を作れることが理由で多くのプログラマが利用しているのかもしれない
+
+2025年のGitHubで最も使われているプログラミング言語はTypeScriptであった。
+
+https://github.blog/news-insights/octoverse/octoverse-a-new-developer-joins-github-every-second-as-ai-leads-typescript-to-1/
+
+### 堅牢な型を目指さない
+
+TypeScriptとしては堅牢な型を目指すことは目的としていないことがわかった。堅牢な型を言語側で目指していくと、JavaScriptライクな記法から離れていく可能性があるからだと私は考えた。これは賛否分かれるだろうなと感じている。そもそも言語側で堅牢な型を作るべきだと言っている人に関してはTypeScriptを好んでいる人は少ないのではないだろうかと考える。言語側で堅牢な型システムを持つ言語をその人たちは利用するだろう。
+
+### 堅牢な型設計を自分たちで作っていく
+
+堅牢な型を言語側がやらないだけで自分たちで作ることは可能だ。`zod`や`valibot`といったバリデーションライブラリを使ったり堅牢な型設計をしてメンバーがミスをしない、バグを起こしにくいつくりにしていくことがとても大事になる。今はAIもあるのでコーディングに対してのハードルは下がっているものの存在しない状態の型を定義していないか、想定していない値が関数に渡ってしまわないかなど厳密に確認することが大事になってくる。
+
+### 領域毎のTypeScriptのモチベーション
+
+TypeScriptはフロントエンド、バックエンド、インフラ、またCLIといった色々な領域で書くことができる。このTypeScriptの設計を見る限り色々なTypeScriptの使い方、モチベーション、考え方が出てくるのではないかと考えている。それが、領域毎に分かれてくるのではないかと考えている。まだ、私自身その明確な答えが出ていないのでなんとも言えないので改めて調べて別の記事で書こうと思う。
+
+## 感想
+
+TypeScriptがなぜ言語側で堅牢な型システムを作らないのかという疑問が晴れたことはよかった。
+このことを知ったことにより領域毎にエラーハンドリングであったりとどのような設計、モチベーションにしていけば良いのかが気になった。このモチベーションによりTypeScriptの型定義が変わってくるだろう。今後はそのようなテーマを持って研究をして行こうと思う。
