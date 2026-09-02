@@ -1,0 +1,326 @@
+---
+title: "テストでDiscriminated Unionを特定の型に絞り込みたくて"
+description: ""
+pubDate: "Sep 01 2026"
+heroImage: "🎆"
+---
+
+:::info
+これは元々TSkaigi sendaiのcfpとして出していたものである。
+ですが、採択されることなく登壇することは叶わなかったがブログに綴ることでせっかくなのでアウトプットしておこうと思う。
+:::
+
+TypeScriptにおいてDiscriminated Unionというものをご存知だろうか。
+判別可能なユニオン型である。
+
+詳しくはサバイバルTypeScriptを読んでほしい。
+
+https://typescriptbook.jp/reference/values-types-variables/discriminated-union
+
+今回の話はこのDiscriminated Unionが関わるテストコードにおいて「困ったぞ」という話である。
+
+## Doscriminated Unionといって最初に出てくるのは
+
+筆者の中では`Reuslt`型である。
+
+```ts
+type Result<T,E> = {
+  kind: "ok",
+  value: T
+} | {
+  kind: "ng",
+  err: E
+}
+```
+この型は`kind`というスキームが`ok`か`ng`によって`value`か`err`であることを判別している。
+
+:::info
+ちなみに人それぞれの`Result`型があると思うが、筆者はRust風のものを採用している。
+それは、プログラマーそれぞれの好みの定義になるだろう。
+:::
+
+
+## テストの対象とする関数
+
+下記の関数を書いていたとしよう。
+
+```ts
+export function okValue() {
+  const value = createOk("hoge")
+
+  return value
+}
+```
+(なんの捻りもない関数でつまらない気もするがテストのことを熱く語りたいので、このような形にした。)
+
+この`createOk`は、下記のように定義されている。
+
+```ts
+const basic = {
+    RESULT_OK: "ok",
+    RESULT_NG: "ng",
+} as const;
+
+export function createOk<T>(value: NonNullable<T>): Result<T, never> {
+    return { kind: basic.RESULT_OK, value };
+}
+```
+
+元の関数は、以下のような実行結果になる。
+
+```ts
+{
+  kind: "ok",
+  value: "hoge"
+}
+```
+
+この関数を元に当時のテストコードをどんな考えで書いていたのかをなるべくストリー仕立て風に書いていこうと思う。
+
+## `kind`が`"ok"`であることと`"value"`がhogeであることを確認したい
+
+筆者は当時、`expect`APIの`toBe`メソッドでのやり方しか知らなかった。
+
+https://vitest.dev/api/expect.html#tobe
+
+```ts
+import { it, expect } from "vitest";
+
+it("検証1", () => {
+  const value = okValue();
+  
+  expect(value.kind).toBe("ok");
+  expect(value.value).toBe("hoge");
+});
+```
+
+上記ソースは一見何も問題のないコードである。
+しかし、
+
+```ts
+expect(value.value).toBe("hoge");
+```
+
+ここの`value.value`が型エラーとなってしまう。
+
+`kind`が`ok`であることをTypeScript側が認知していないのだ。
+
+筆者はそこで思った。
+
+## 「よし!ならif文を使おう!」
+
+ということでif文を書けば型のエラーが凌げるということで実際に書いてみる。
+
+```ts
+it("検証2", () => {
+  const value = okValue();
+
+  expect(value.kind).toBe("ok");
+
+  if (value.kind === "ok") {
+    expect(value.value).toBe("hoge");
+  }
+});
+```
+
+これで型エラーは防げる。しかし、if文を使うとテストの書き方次第では気づかぬバグを引き起こすことになる。
+例えば、
+
+```ts
+it("検証2のダミー", () => {
+  const value = okValue();
+
+  if (value.kind === "ok") {
+    //もし、kindがokでなかった場合このフローには入らずかつ、テストが成功したとみなされる。
+    expect(value.value).toBe("hoge");
+  }
+});
+```
+こういうコードを書いたとしよう。
+
+何が問題かというと、`kind`が`"ok"`かどうかの検証をせずにif文を書いているので仮に`kind`が`"ng"`だった場合、失敗しているにも関わらずテストは通ってしまう。
+
+なのでif文の中で検証コードを書くならば、慎重な取り扱いをしなくてはならないと。
+
+なんだかそれはリスクがあるなと判断した筆者は次なるパターンに移行する。
+
+:::info
+余談だがzodは上記のようなテストコードを書いている。
+
+https://github.com/colinhacks/zod/blob/7ce3e77d/packages/zod/src/v4/classic/tests/async-parsing.test.ts#L8-L19
+
+Discussionを送ってみたけどこれはPRを出してみても良いものなのか？リファクタリングでしかないなと思ったので結局送ってない。
+
+https://github.com/colinhacks/zod/discussions/6341
+:::
+
+
+
+
+## 「それなら、if文の中に検証コードを書かずにエラーをthorwすれば良いじゃん！」
+
+それならifの中で検証コードを書かなくすれば良いという発想になった。
+
+```ts
+it("検証3", () => {
+  const value = okValue();
+
+  expect(value.kind).toBe("ok");
+
+  if(value.kind !== "ok"){
+    thorw Error("エラーだよん")
+  }
+
+  expect(value.value).toBe("hoge");
+});
+```
+
+当然こうすれば、型エラーになることはないし、危険なコードにもならない。
+expectが失敗した瞬間このテストは終わるし良いだろうと思うが、一つ気になったことがある。
+「コードが冗長だし、エラーをthrowするところどう考えても無駄だろ！」
+
+ここで筆者はかなり悩んでしまった。
+
+## 救世主、ChatGPTの出した答えは。。
+
+涙目になりながらChatGPTに筆者は質問をした。
+そしたら一つのAPIを提示してくれた。
+
+`asert` APIだ。
+
+https://vitest.dev/api/expect-typeof.html#asserts
+
+どうやらこいつは、検証をしてくれるだけではなく型まで絞り込んでくれるようだ。
+
+さらにvitest v4.0.0から`expect`APIに`assert`メソッドとして追加されていてわざわざ`assert`APIをimportしなくても良くなった。
+
+https://github.com/vitest-dev/vitest/pull/8695
+
+
+
+## `assert`メソッドを使ったテストの実装
+
+早速テストコードに取り入れた。
+```ts
+it("検証4", () => {
+  const value = okValue();
+
+  expect.assert(value.kind==="ok","エラーだよん");
+  expect(value.value).toBe("hoge");
+});
+```
+
+「おおースッキリした」ということで型も絞り込みながら検証もできることがわかったのでスッキリとしたテストコードが完成した。
+
+## 一体どんな魔法を使ったのか
+
+`assert`にはどのような型定義がされているのかが気になったので、コードを覗きに行った。
+覗いた結果以下のようになっていた。
+```ts
+export interface Assert {
+    /**
+     * @param expression    Expression to test for truthiness.
+     * @param message    Message to display on error.
+     */
+    (expression: any, message?: string): asserts expression;
+    /**
+     * Throws a failure.
+     *
+     * @param message    Message to display on error.
+     * @remarks Node.js assert module-compatible.
+     */
+    fail(message?: string): never;
+    //以下多くの型定義が続いていく
+```
+
+皆さんはお気づきだろうか？
+
+`asserts expression`
+
+なんじゃこいつは！！
+
+## `asserts expenssion`の正体
+
+これはassert signatureであり、
+「関数が正常終了したらならこの条件は真として扱って良い」
+というものである。
+
+つまり、
+
+```ts
+function wow(expenssion: unknown): asserts expenssion {
+  if (!expenssion) {
+    throw new Error();
+  }
+}
+```
+`wow`関数が正常に終了したら`expenssion`は真として扱って良いとなる。
+なので、テストコードに戻ると、
+
+```ts
+expect.assert(value.kind==="ok","エラーだよん");
+```
+
+`asserts`の関数が正常終了した場合`value.kind`を`"ok"`として扱って良い問いふうになるため型が絞り込めるというわけだ。
+
+ただ、この`asserts`は気をつけて使わないといけない。
+これらを使う際の、責務は我々にありTypeScript側では何も保証をしてくれないということだ。
+型アサーションの`as`と同じようなものである。
+
+なので筆者の考えとしては、ヘルパー関数以外は使うのを控えた方が良さそうという感想である。
+
+## まとめ
+
+- vitestには`assert`というAPIと`expect`のメソッドが存在する
+- `assert`にはasserts signatureが使われている
+- asserts signatureを使う際の責任は我々にある
+
+## (余談)ちなみに、`toEqual`メソッドを使うパターンもある
+
+今回の内容とは逸れてしまうが、`toEqual`が`expect` APIには存在する。
+
+https://vitest.dev/api/expect.html#toequal
+
+```ts
+import { it, expect } from "vitest";
+
+it("valueでhogeが返ってくる",()=>{
+  const value = okValue();
+
+  const compareValue = {
+    kind: "ok",
+    value: "hoge"
+  };
+
+  expect(value).toEqual(compareValue);
+})
+```
+
+これでも十分に良い。実際にvalibotの`safeParse`のテストでは似たようなコードを書かれていた。
+
+https://github.com/open-circle/valibot/blob/7237d90891d0a17cda37a2e054fc5ba8036c62cf/library/src/methods/safeParser/safeParser.test.ts#L39
+
+## (さらに余談) if禁止のリンターが存在する
+
+実はテストコードにおけるif禁止のリンターが存在する。
+筆者はoxlintを使っているが、
+
+https://oxc.rs/docs/guide/usage/linter/rules/vitest/no-conditional-in-test.html
+https://oxc.rs/docs/guide/usage/linter/rules/vitest/no-conditional-expect.html
+https://oxc.rs/docs/guide/usage/linter/rules/vitest/no-conditional-tests.html
+
+などが用意されている。
+
+特に、`no-conditional-tests`では、
+
+> Conditional statements in test cases can make tests unpredictable and harder to understand. Tests should be consistent and straightforward to ensure reliable results and maintainability.
+
+と書かれている。
+
+日本語に訳すると
+
+「テストケースに条件分岐を含めると、テストの結果が予測しづらくなり、理解しにくくなる可能性があります。信頼性の高い結果と保守性を確保するためには、テストは一貫性があり、わかりやすいものであるべきです。」
+
+である。
+
+安心安全なテストコードを書くためにもこのようなリンターを用意しておくというのは一つの手だと筆者は思った。

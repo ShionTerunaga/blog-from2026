@@ -137,6 +137,11 @@ globalStyle(`.${prose} a:not([data-link-card]):hover`, {
   textDecorationColor: "rgba(166, 203, 255, 0.95)",
 });
 
+globalStyle(`.${prose} p:has(> a[data-link-card]:only-child)`, {
+  marginBottom: "1em",
+  width:"98%"
+});
+
 globalStyle(`.${prose} blockquote`, {
   borderLeft: "4px solid rgba(229, 233, 240, 0.6)",
   margin: "1.5em 0",
