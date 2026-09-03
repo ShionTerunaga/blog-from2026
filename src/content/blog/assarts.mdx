@@ -157,7 +157,7 @@ https://github.com/colinhacks/zod/discussions/6341
 
 
 
-## 「それなら、if文の中に検証コードを書かずにエラーをthorwすれば良いじゃん！」
+## 「それなら、if文の中に検証コードを書かずにエラーをthrowすれば良いじゃん！」
 
 それならifの中で検証コードを書かなくすれば良いという発想になった。
 
@@ -168,7 +168,7 @@ it("検証3", () => {
   expect(value.kind).toBe("ok");
 
   if(value.kind !== "ok"){
-    thorw Error("エラーだよん")
+    throw Error("エラーだよん")
   }
 
   expect(value.value).toBe("hoge");
