@@ -139,7 +139,7 @@ globalStyle(`.${prose} a:not([data-link-card]):hover`, {
 
 globalStyle(`.${prose} p:has(> a[data-link-card]:only-child)`, {
   marginBottom: "1em",
-  width:"98%"
+  width:"96%"
 });
 
 globalStyle(`.${prose} blockquote`, {
