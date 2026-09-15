@@ -1,0 +1,248 @@
+---
+title: "Reactはなぜ生まれたのか"
+description: ""
+pubDate: "Sep 16 2026"
+heroImage: "🎯"
+---
+
+:::info
+この記事はAIと共に並走しながら記述したものである
+:::
+
+筆者はよくReactを使っている。レベルで言えば動くものは作れる。しかし、Reactの本質を捉えられていないと思い長い間、モヤモヤしていた。歴史や方向性を調べてReactが何を目的として何を目指しているのかを紐解いていきたいと思った。
+
+それの第一弾としてなぜ、Reactが生まれたのかを調べてみてそれをまとめる。
+
+## Reactとは
+
+ReactはMetaが作ったJavaScriptのライブラリである。
+https://ja.legacy.reactjs.org/
+https://ja.react.dev/
+
+現在の公式ドキュメントは react.dev で公開されており、以前のドキュメントは legacy.reactjs.org にアーカイブされている。
+
+公式には、
+
+> ユーザインターフェース（UI）を表示するための JavaScript ライブラリです。
+
+と記載されている。
+
+Reactは状態に応じたUIを宣言的に表現し、それをコンポーネントとして構成することができる。
+
+```tsx
+function Greeting({ name }) {
+  return <p>Hello, {name}!</p>;
+}
+
+export default function App() {
+  return <Greeting name="React" />;
+}
+```
+
+上記例では、`name`に応じてUIが決まり、コンポーネントとして分割している。
+
+これにより現在の状態に対してUIがどうあるべきであるかを記述できる。
+
+## Reactが生まれる前のUI構築
+
+Reactが生まれる前のUI構築の例を以下に記載する。
+
+```html
+<p id="greeting"></p>
+
+<script>
+  const name = "React";
+
+  document.getElementById("greeting").textContent =
+    `Hello, ${name}!`;
+</script>
+```
+
+本来、webアプリケーション開発では**DOM操作**というものが存在する。
+
+### DOMとは
+
+DOMはDocument Object Modelの略で、HTMLなどの文書をオブジェクトとして表現し、JavaScriptなどから取得・変更できる仕組みである。
+
+これを、取得・追加・更新・削除することをDOM操作と言う。
+
+```js
+const element = document.getElementById("greeting");
+element.textContent = "Hello, React!";
+```
+
+### DOM操作は大変だった？
+
+筆者はそこまでvanillaなJSで大きなアプリケーションを作った経験がないため実感しにくいがAIに大変そうなコードを吐き出させてみた。
+
+```html
+<button id="add">追加</button>
+<button id="remove">削除</button>
+
+<p id="count"></p>
+<p id="message"></p>
+<ul id="list"></ul>
+
+<script>
+  const items = [];
+
+  const addButton = document.getElementById("add");
+  const removeButton = document.getElementById("remove");
+
+  const count = document.getElementById("count");
+  const message = document.getElementById("message");
+  const list = document.getElementById("list");
+
+  addButton.addEventListener("click", () => {
+    const item = `Item ${items.length + 1}`;
+    items.push(item);
+
+    count.textContent = `件数: ${items.length}`;
+    message.textContent = "";
+
+    const li = document.createElement("li");
+    li.textContent = item;
+    list.appendChild(li);
+  });
+
+  removeButton.addEventListener("click", () => {
+    items.pop();
+
+    count.textContent = `件数: ${items.length}`;
+
+    if (items.length === 0) {
+      message.textContent = "データがありません";
+    }
+
+    const lastItem = list.lastElementChild;
+
+    if (lastItem) {
+      list.removeChild(lastItem);
+    }
+  });
+
+  count.textContent = "件数: 0";
+  message.textContent = "データがありません";
+</script>
+```
+第一印象として、あまりにも冗長であると感じた。
+
+さらに、開発者自身がDOMを作成し、データの変更に応じて関連するDOMを更新したり削除したりしなくてはならない。
+
+ここでは`items`が変更されたときに`count`や`message`、`list`のどこをどのように変更するのかを判断してDOMを更新するという責務を開発者が担っている。
+
+アプリケーション規模が大きくなればなるほど、データとDOMの関係も複雑になり、より保守の難しさが増していきそうだと感じた。
+
+### jQueryはどうなのか？
+
+DOM操作などをより簡潔に記述するためのライブラリとして、jQueryが広く使われるようになった。
+
+https://jquery.com/
+
+vanillaのJSのソースをjQueryに置き換えると以下のようになるだろう。
+
+```html
+<button id="add">追加</button>
+<button id="remove">削除</button>
+
+<p id="count"></p>
+<p id="message"></p>
+<ul id="list"></ul>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+<script>
+  const items = [];
+
+  $("#add").on("click", () => {
+    const item = `Item ${items.length + 1}`;
+    items.push(item);
+
+    $("#count").text(`件数: ${items.length}`);
+    $("#message").text("");
+    $("#list").append(`<li>${item}</li>`);
+  });
+
+  $("#remove").on("click", () => {
+    items.pop();
+
+    $("#count").text(`件数: ${items.length}`);
+
+    if (items.length === 0) {
+      $("#message").text("データがありません");
+    }
+
+    $("#list li:last").remove();
+  });
+
+  $("#count").text("件数: 0");
+  $("#message").text("データがありません");
+</script>
+```
+
+先ほどのVanilla JSと比べると冗長さはかなり軽減されたソースコードであると感じる。
+
+jQueryはDOM操作をはじめ、イベント処理やAjaxなどのJavaScript処理を簡潔に記述できるライブラリである。
+
+しかし、データに応じてDOMの操作を開発者自身が担うという問題は残っている。
+アプリケーションの規模が大きくなるほど保守が難しくなるという問題は残ったままだ。
+
+## Reactはなぜ作られたのか
+
+公式のドキュメントのブログに書いてある。
+
+https://ja.legacy.reactjs.org/blog/2013/06/05/why-react.html
+
+## DOM操作に関して
+
+DOM操作関連に関してのことも書いてある。
+
+> In a traditional JavaScript application, you need to look at what data changed and imperatively make changes to the DOM to keep it up-to-date.
+
+ここではデータの変更とDOMの状態を、人間が手作業で同期し続けるのは辛いよねという話をしている。
+
+それに対して、
+
+> When your component is first initialized, the render method is called, generating a lightweight representation of your view. From that representation, a string of markup is produced, and injected into the document. When your data changes, the render method is called again. In order to perform updates as efficiently as possible, we diff the return value from the previous call to render with the new one, and generate a minimal set of changes to be applied to the DOM.
+
+データが変更されたときに`render`メソッドが再び呼び出されて前後の戻り値を比較してDOMに最小限の変更を生成すると書いてある。
+
+従来は、データが変更されるたびに「どのDOMをどのように変更するか」を開発者自身が考えて記述する必要があった。
+
+Reactでは、データが変更されたら再びrenderし、その結果から必要なDOMの変更をReact側が判断する。
+
+これにより、データの変更とDOMの状態を同期する処理の一部をReact側に任せられるようになった、と筆者は捉えている。
+
+
+### その他
+
+ブログには以下のようなことが書いてある。
+
+- MVCのフレームワークではなく再利用可能なUIコンポーネントの作成を促進する
+- マークアップとそれに対応するViewのロジックを分離せず、JavaScript内でまとめることでViewの拡張や保守を容易にするため、Reactはテンプレートを使わない
+- 生のJSよりもHTMLの読みやすさを好む場合のためにJSXを作成した
+
+他にも色々書いてあるがReactの良さが滲み出ているのは状態とUIが近しい関係にある設計がされていることだと感じた。
+
+従来の命令的なUI更新が抱えていた問題の一つを、Reactは別のアプローチで解決したと言えるのではないだろうか。
+
+## まとめ
+
+- ReactはUIを構築するためのライブラリである
+- Reactが生まれる前のUI構築は開発者が直接DOMを操作してUIを更新する方法が一般的だった
+  - データに基づいてどこのDOMを操作しなくてはならないのかが大変だった
+  - 拡張や保守がしにくい構成だった
+- Reactは、状態の変化に応じて必要なDOM更新をReact側に委ね、状態とUIの対応関係を宣言的に記述できるようにした
+  - これはしばしば`f(state) = UI`のように表現される
+
+## 最後に
+
+Reactは現在多くのユーザーに使われ続け進化を続けている。今では**RSC**や**Async React**などの新しい概念が生れている。
+
+ただ、どのような方向へ進化しても、Reactの強みの一つは「現在の状態に応じてUIが決まる」という考え方にあると筆者は考えている。
+
+Reactが生まれる前は、データの変更に応じてどのDOMをどのように変更するかを開発者自身が管理する必要があった。Reactはその責任の一部を引き受け、状態とUIの関係を宣言的に記述できるようにした。
+
+これは、Reactが従来のUI構築にあった問題の一つを解決した大きな実績ではないだろうか。
+
+この原点を頭に入れたうえで、Reactがその後どのような考え方で**RSC**や**Async React**といった方向へ進んでいったのかを、今後さらに追っていきたい。
