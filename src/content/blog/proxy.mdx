@@ -94,7 +94,7 @@ https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Pr
 
 https://v1.yamada-ui.com/ja/styled-system/ui
 
-ここで面白い部分が、1つのAPIで**メソッド呼び出しと関数**呼び出しができることだ。
+ここで面白い部分が、1つのAPIで**プロパティアクセスと関数**呼び出しができることだ。
 
 ```tsx
 <ui.button
@@ -192,16 +192,16 @@ https://github.com/yamada-ui/yamada-ui/blob/main/packages/react/src/core/system/
 :::
 
 ハンドラー関数では`get`と`apply`が宣言されている。
-`get`はメソッドで呼び出された時、`apply`は関数呼び出しされた時に発火する。
+`get`はプロパティにアクセスされた時、`apply`は関数呼び出しされた時に発火する。
 
 https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Proxy/Proxy/get
 
 https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Proxy/Proxy/apply
 
 `apply`ではそのままスタイルシステムを付与する関数を発火させている。
-一方、`get`では、オブジェクトをキャッシュとして利用している。指定されたプロパティ（HTMLタグ）に対応するコンポーネントがキャッシュに存在しない場合は生成してキャッシュに保存し、最終的にそのコンポーネントを返している。
+一方、`get`では、`Map`をキャッシュとして利用している。指定されたプロパティ（HTMLタグ）に対応するコンポーネントがキャッシュに存在しない場合は生成してキャッシュに保存し、最終的にそのコンポーネントを返している。
 
-このAPIはv1ではコンポーネントにスタイルシステムを付与する際に`baseSystem`のみだったが、v2では`variants`などを与えることができるようになった。
+このAPIでは、v1は基本スタイルを`baseStyle`で指定していたが、v2では`base`に名称が変わり、`variants`なども与えられるようになった。
 
 以下ドキュメント引用のソース。
 
@@ -406,7 +406,7 @@ https://github.com/motiondivision/motion/blob/main/packages/framer-motion/src/re
 上記はReact版の`motion`の実装である。
 ほぼ、YamadaUIやchakraUIと同じようなケースである。
 
-オブジェクトをキャッシュとして利用することについてだが、このようにすることで不要なコンポーネント再生成を行われないようにしている。これはパフォーマンス最適化の1つと言って良いだろう。
+`Map`をキャッシュとして利用することで、不要なコンポーネントの再生成を防いでいる。これはパフォーマンス最適化の1つと言って良いだろう。
 
 Vueの`motion`の実装も見てみる。
 
