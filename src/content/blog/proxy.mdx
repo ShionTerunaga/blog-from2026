@@ -1,0 +1,572 @@
+---
+title: "JSのProxy割と使われている"
+description: ""
+pubDate: "Oct 3 2026"
+heroImage: "🥱"
+---
+
+JavaScriptの`Proxy`をご存知だろうか。
+
+筆者は実際に仕事でJavaScriptを書いているが、一度も書いたことがない。
+
+しかし、OSSのソースコードを読んでいると目にすることが多い。なぜ、`Proxy`が使われているのかなどの深い話は現時点ですることはできないがどのライブラリでどのような使われ方をしているのかなどの話をしていこうと思う。
+
+## 初めて目にした時の話
+
+初めて目にした時は社会人1年目にYamadaUIのOSSにコントリビュートした時である。
+YamadaUIは**日本発ReactのUIライブラリ**の1つで、多くのコンポーネントが用意されている。
+
+https://yamada-ui.com/ja
+
+そのYamadaUIの`factory`関数には`Proxy`が使われていた。
+当時は「ふーんそんなのが、あるんだー」くらいの「理解する気あるんか？」と突っ込まれるような姿勢だった。
+
+時は3年？ほど流れ、「向き合ってみようかな〜」というモチベーションになった次第である。
+
+## `Proxy`とは
+
+https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Proxy
+
+とりあえず、「mdn読めばなんとかなるっしょ」ということで、
+
+> Proxy オブジェクトにより別なオブジェクトのプロキシーを作成することができ、そのオブジェクトの基本的な操作に介入したり再定義したりすることができます。
+
+頭の硬い筆者は「うん、わからん」だったので一旦噛み砕いてみる。
+
+### そもそもプロキシーって一般的には？
+
+英語で「Proxy」は「代理」という意味がある。
+
+https://ejje.weblio.jp/content/proxy
+
+### つまり
+
+「Proxy オブジェクトにより別なオブジェクトの**代理**を作成することができ、そのオブジェクトの基本的な操作に介入したり再定義したりすることができます。」
+
+と書き換えられるということだ。
+
+頑張って要約すると**元のオブジェクトの代理となって、操作に処理を割り込ませたり、取得・設定するデータを加工したりできる**となる。
+
+### 実装例
+
+```js
+const foods = {
+  yakkiniku: "焼肉",
+  sashimi: "刺身",
+  yakiton: "やきとん"
+};
+const handler = {
+  get(target,prop) {
+    return `${target[prop]}が食べたい`
+  }
+}
+
+const wannerEatASpecificFood = new Proxy(foods, handler)
+
+console.log(wannerEatASpecificFood.yakiton);
+console.log(wannerEatASpecificFood.yakkiniku);
+console.log(wannerEatASpecificFood.sashimi);
+```
+
+`wannerEatASpecificFood` が`foods`の代理となり、プロパティへのアクセスに割り込んで、返却するデータを加工している。
+
+### `Proxy`のハンドラー関数
+
+`Proxy`は第二引数に指定するハンドラーオブジェクトに、ハンドラー関数を定義できる。
+ハンドラー関数は、プロパティの参照や関数の呼び出しなど、対応する操作が行われたときに発火する関数である。
+
+ハンドラー関数の種類はいくつかあるのでmdnを見てもらえると良い。
+
+https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Proxy/Proxy#%E3%83%8F%E3%83%B3%E3%83%89%E3%83%A9%E3%83%BC%E9%96%A2%E6%95%B0
+
+## `Proxy`が使われている事例
+
+ここから`Proxy`が使われているライブラリを紹介する。
+
+### YamadaUI
+
+冒頭でも書いたがYamadaUIの`factory`関数には`Proxy`が使われている。
+この関数は`styled`というAPIとして配布されている。
+
+この`styled`という名前はv2用でv1では`ui`という名前でAPIが提供されていた。
+
+レガシー(v1)ドキュメントにこのAPIの使い方が書いてある。
+
+https://v1.yamada-ui.com/ja/styled-system/ui
+
+ここで面白い部分が、1つのAPIで**メソッド呼び出しと関数**呼び出しができることだ。
+
+```tsx
+<ui.button
+  py="sm"
+  px="md"
+  rounded="md"
+  bg="purple.600"
+  color="white"
+  _hover={{ bg: "purple.500" }}
+>
+  Click me!
+</ui.button>
+```
+
+```tsx
+import { ui } from "@yamada-ui/core"
+
+const Button = ui("button")
+
+const Demo = () => {
+  return <Button>Click me!</Button>
+}
+```
+
+使い分けとしては、
+`ui.button`は、その場でスタイルを指定してUIを作りたい場合に使う、
+`ui("button")`は、共通のスタイルや振る舞いを持つコンポーネントを定義し、再利用したい場合に使う。
+
+さらに関数宣言の方は独自のコンポーネントを引数として渡すことができ、そのコンポーネントにYamadaUIのスタイルシステムを与えることができる。
+
+```tsx
+import { ui } from "@yamada-ui/core"
+import { YourComponent } from "./your-component"
+
+const NewComponent = ui(YourComponent)
+
+const Demo = () => {
+  return (
+    <NewComponent
+      py="sm"
+      px="md"
+      rounded="md"
+      bg="purple.600"
+      color="white"
+      _hover={{ bg: "purple.500" }}
+    >
+      Click me!
+    </NewComponent>
+  )
+}
+```
+:::info
+独自のコンポーネントにスタイルシステムを付与するベストプラクティスをまだ見出せていない
+:::
+
+1つのAPIで2つの使い方、表現を実現させるために`Proxy`を使っている(と勝手に予想している)。
+
+実際の中身の実装は以下のようになっている。
+
+```ts
+function factory() {
+  const cache = new Map<DOMElement, FC>()
+  const target: ProxyTarget = (el, options) => createStyled(el, options)
+
+  return new Proxy(target, {
+    apply: function (
+      _target,
+      _thisArg,
+      [el, options]: [DOMElement, StyledOptions],
+    ) {
+      return createStyled(el, options)
+    },
+
+    get: function (_target, el: DOMElement): FC | undefined {
+      if (!cache.has(el)) cache.set(el, createStyled(el))
+
+      return cache.get(el)
+    },
+  }) as Factory
+}
+
+/**
+ * `styled` is an object of JSX elements enabled with Yamada UI's style system,
+ * and can also be used as a function for custom components to receive Yamada UI's style system.
+ *
+ * @see https://yamada-ui.com/docs/components/styled
+ */
+export const styled = factory()
+```
+
+https://github.com/yamada-ui/yamada-ui/blob/main/packages/react/src/core/system/factory.ts#L27
+
+:::info
+`factory`に関してはほとんどv1,v2で差分はない。
+:::
+
+ハンドラー関数では`get`と`apply`が宣言されている。
+`get`はメソッドで呼び出された時、`apply`は関数呼び出しされた時に発火する。
+
+https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Proxy/Proxy/get
+
+https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Proxy/Proxy/apply
+
+`apply`ではそのままスタイルシステムを付与する関数を発火させている。
+一方、`get`では、オブジェクトをキャッシュとして利用している。指定されたプロパティ（HTMLタグ）に対応するコンポーネントがキャッシュに存在しない場合は生成してキャッシュに保存し、最終的にそのコンポーネントを返している。
+
+このAPIはv1ではコンポーネントにスタイルシステムを付与する際に`baseSystem`のみだったが、v2では`variants`などを与えることができるようになった。
+
+以下ドキュメント引用のソース。
+
+```tsx
+const Button = styled("button", {
+  base: {
+    alignItems: "center",
+    appearance: "none",
+    cursor: "pointer",
+    display: "inline-flex",
+    fontWeight: "medium",
+    justifyContent: "center",
+    overflow: "hidden",
+    position: "relative",
+    rounded: "l2",
+    transitionDuration: "moderate",
+    transitionProperty: "common",
+    userSelect: "none",
+    verticalAlign: "middle",
+    whiteSpace: "nowrap",
+    _readOnly: { layerStyle: "readOnly" },
+    _disabled: { layerStyle: "disabled" },
+  },
+  variants: {
+    outline: {
+      layerStyle: "outline",
+      _hover: { layerStyle: "outline.hover" },
+    },
+    solid: {
+      layerStyle: "solid",
+      _hover: { layerStyle: "solid.hover" },
+    },
+    subtle: {
+      layerStyle: "subtle",
+      _hover: { layerStyle: "subtle.hover" },
+    },
+  },
+})
+```
+
+https://yamada-ui.com/ja/docs/get-started/migration#styled
+
+### chakraUI
+
+YamadaUIに似たライブラリとしてchakraUIがある。
+
+https://chakra-ui.com/
+
+`chakra`というAPIが存在し、かなりYamadaUIの`styled`に似たものになっている。
+
+https://chakra-ui.com/docs/styling/chakra-factory
+
+```ts
+const chakraImpl = new Proxy(styledFn, {
+  apply(_, __, args) {
+    // @ts-ignore
+    return styledFn(...args)
+  },
+  get(_, el) {
+    if (!cache.has(el)) {
+      cache.set(el, styledFn(el as any))
+    }
+    return cache.get(el)
+  },
+})
+
+export const chakra = chakraImpl as unknown as StyledFactoryFn
+```
+
+https://github.com/chakra-ui/chakra-ui/blob/main/packages/react/src/styled-system/factory.tsx#L316
+
+YamadaUIとほとんど同じなのでここでの詳細は割愛する。
+
+### motion
+
+アニメーションライブラリのmotionである。
+
+https://motion.dev/
+
+このライブラリは元々 Framer Motion というReact向けのアニメーションライブラリだった。作者のMatt PerryがFramer社を退職するタイミングで独立したプロジェクトとなり、Motion へと名前を変更した。また、ReactだけでなくWeb全体で利用できるアニメーションライブラリを目指し、Vanilla JavaScript向けのAPIやVue向けのライブラリも提供され、現在に至っている。
+
+https://motion.dev/magazine/framer-motion-is-now-independent-introducing-motion
+
+使い方としては、Reactの場合、
+
+```tsx
+import { motion } from "motion/react"
+  
+function Component() {
+  return <motion.button animate={{ opacity: 1 }} />
+}
+```
+
+https://motion.dev/docs/react
+
+Vueの場合、
+
+```vue
+<motion.button :animate="{ opacity: 1 }" />
+```
+https://motion.dev/docs/vue
+
+VanillaJSの場合
+
+https://motion.dev/docs/quick-start
+
+```html
+<div class="box"></div>
+
+<script type="module">
+    import { animate } from "motion"
+
+    animate(".box", { rotate: 360 }, { duration: 1 })
+</script>
+
+<style>
+    .box {
+        width: 100px;
+        height: 100px;
+        background-color: var(--hue-3);
+        border-radius: 10px;
+    }
+</style>
+```
+
+と書くことができる。
+
+本体のソースコード`packages/framer-motion/src/render/components/create-proxy.ts`の`createMotionProxy`にて、`Proxy`が使われている。
+
+```ts
+export function createMotionProxy(
+    preloadedFeatures?: FeaturePackages,
+    createVisualElement?: CreateVisualElement<any, any>
+): MotionProxy {
+    if (typeof Proxy === "undefined") {
+        return createMotionComponent as MotionProxy
+    }
+
+    /**
+     * A cache of generated `motion` components, e.g `motion.div`, `motion.input` etc.
+     * Rather than generating them anew every render.
+     */
+    const componentCache = new Map<string, any>()
+
+    const factory = (Component: string, options?: MotionComponentOptions) => {
+        return createMotionComponent(
+            Component,
+            options,
+            preloadedFeatures,
+            createVisualElement
+        )
+    }
+
+    /**
+     * Support for deprecated`motion(Component)` pattern
+     */
+    const deprecatedFactoryFunction = (
+        Component: string,
+        options?: MotionComponentOptions
+    ) => {
+        if (process.env.NODE_ENV !== "production") {
+            warnOnce(
+                false,
+                "motion() is deprecated. Use motion.create() instead."
+            )
+        }
+        return factory(Component, options)
+    }
+
+    return new Proxy(deprecatedFactoryFunction, {
+        /**
+         * Called when `motion` is referenced with a prop: `motion.div`, `motion.input` etc.
+         * The prop name is passed through as `key` and we can use that to generate a `motion`
+         * DOM component with that name.
+         */
+        get: (_target, key: string) => {
+            if (key === "create") return factory
+
+            /**
+             * If this element doesn't exist in the component cache, create it and cache.
+             */
+            if (!componentCache.has(key)) {
+                componentCache.set(
+                    key,
+                    createMotionComponent(
+                        key,
+                        undefined,
+                        preloadedFeatures,
+                        createVisualElement
+                    )
+                )
+            }
+
+            return componentCache.get(key)!
+        },
+    }) as MotionProxy
+}
+```
+
+https://github.com/motiondivision/motion/blob/main/packages/framer-motion/src/render/components/create-proxy.ts#L22
+
+上記はReact版の`motion`の実装である。
+ほぼ、YamadaUIやchakraUIと同じようなケースである。
+
+オブジェクトをキャッシュとして利用することについてだが、このようにすることで不要なコンポーネント再生成を行われないようにしている。これはパフォーマンス最適化の1つと言って良いだろう。
+
+Vueの`motion`の実装も見てみる。
+
+```ts
+export function createMotionComponentWithFeatures(
+  featureBundle?: FeatureBundle,
+) {
+  return new Proxy({} as unknown as MotionNameSpace, {
+    get(_, prop) {
+      if (prop === 'create') {
+        return (component: any, options?: MotionCreateOptions) =>
+          createMotionComponent(component, {
+            ...options,
+            ...featureBundle,
+          })
+      }
+
+      return createMotionComponent(prop as string, {
+        ...featureBundle,
+      })
+    },
+  })
+}
+```
+
+React版と少し違うが、やっていることはほぼ同じだと見ている。
+Vue版ではキャッシュ関連の処理が`createMotionComponent`内にあり、`create`とその他で一見同じ関数を利用しているが、渡された値がHTMLタグを表す文字列かVueコンポーネントかによって内部の処理が分かれている。
+
+コード内のコメントには
+
+```
+/**
+ * Creates a motion component from a base component or HTML tag
+ * Caches string-based components for reuse
+ */
+ ```
+
+と書かれている。React版と同様に、一度生成したHTMLタグのMotionコンポーネントをキャッシュして再利用することで、不要なコンポーネントの再生成を防いでいる。
+
+### Vue.js
+
+:::info
+保険をかけておくが筆者はVue.jsをあまり書いたことがない。
+:::
+
+Vue.jsでも`Proxy`は使われていた。
+`reactive`だ。
+
+https://ja.vuejs.org/guide/essentials/reactivity-fundamentals.html#reactive
+
+リアクティビティーの一つである。リアクティビティーは
+
+> リアクティビティーとは、宣言的な方法で変化に対応できるようにするプログラミングパラダイムです。
+
+とドキュメントに書いてある。
+
+https://ja.vuejs.org/guide/extras/reactivity-in-depth.html#what-is-reactivity
+
+ドキュメントにはExcelのことが書いてあり、「A2セルに`=A0+A1`と定義しておいたら、A0やA1を変更したらA2も変更されるよね〜」的なことが書いてありこのような事象がリアクティビティーである。
+
+「Vue.jsでは状態を変更したらUIもそれに応じて変更される」と筆者は理解している。
+
+`Proxy`に関して、Vue.jsのドキュメントにも使っていると書いてあった。
+
+> リアクティブオブジェクトは JavaScript プロキシ であり、通常のオブジェクトと同じように動作します。違いは、Vue がリアクティブオブジェクトのすべてのプロパティのアクセスや変更をインターセプトして、リアクティビティーの追跡やトリガーを行うことができることです。
+
+```ts
+function createReactiveObject(
+  target: Target,
+  isReadonly: boolean,
+  baseHandlers: ProxyHandler<any>,
+  collectionHandlers: ProxyHandler<any>,
+  proxyMap: WeakMap<Target, any>,
+) {
+  //なんかもろもろ処理が書いてある
+
+  const proxy = new Proxy(
+    target,
+    targetType === TargetType.COLLECTION ? collectionHandlers : baseHandlers,
+  )
+  proxyMap.set(target, proxy)
+  return proxy
+}
+```
+
+https://github.com/vuejs/core/blob/main/packages/reactivity/src/reactive.ts#L300
+
+ハンドラー関数も少し見てみる。
+
+```ts
+
+class MutableReactiveHandler extends BaseReactiveHandler {
+  constructor(isShallow = false) {
+    super(false, isShallow)
+  }
+
+  set(
+    target: Record<string | symbol, unknown>,
+    key: string | symbol,
+    value: unknown,
+    receiver: object,
+  ): boolean {
+    //これ以降にたくさんゴニョゴニョ書いているよぉ〜
+
+    // UI更新などのリアクティブな処理を発火する入り口
+    if (target === toRaw(receiver) && result) {
+      if (!hadKey) {
+        trigger(target, TriggerOpTypes.ADD, key, value)
+      } else if (hasChanged(value, oldValue)) {
+        trigger(target, TriggerOpTypes.SET, key, value, oldValue)
+      }
+    }
+    return result
+  }
+
+  //なんか書いてある
+}
+```
+
+https://github.com/vuejs/core/blob/main/packages/reactivity/src/baseHandlers.ts#L137
+
+この`set`の部分はオブジェクトに代入するとき
+
+`state.count++`や`state.hoge = "hello"`とした時に発火する関数である。
+
+`get`については、
+
+```ts
+class BaseReactiveHandler implements ProxyHandler<Target> {
+  constructor(
+    protected readonly _isReadonly = false,
+    protected readonly _isShallow = false,
+  ) {}
+
+  get(target: Target, key: string | symbol, receiver: object): any {
+    if (key === ReactiveFlags.SKIP) return target[ReactiveFlags.SKIP]
+
+    //なんか色々やっているよ〜
+
+    return res
+  }
+}
+```
+
+https://github.com/vuejs/core/blob/main/packages/reactivity/src/baseHandlers.ts#L49
+
+別のクラスに定義してあった。
+
+`state.count = 1`のように、通常のオブジェクトと同じ記法で値を変更するだけで、その変更を検知してUIに反映できる。この仕組みは、オブジェクトへの操作に介入できるProxyだからこそ実現しやすいものだと考えている。
+
+Vue.js本体のコードは大きいので、chibivueというVue.jsの中身を学ぶ上でとても良い教材がある。そちらを読んでみるのありかと。
+
+https://book.chibivue.land/ja/
+
+https://book.chibivue.land/ja/10-minimum-example/035-try-implementing-a-minimum-reactivity-system.html
+
+わかりやすく書いているのでおすすめである。
+
+## まとめ
+
+- `Proxy`は元のオブジェクトの代理としてオブジェクトを操作するなどのことをするもの
+- UIライブラリやVue.jsのリアクティブシステムの一部に使われている
+- chibivueは良い教材でオヌヌメ
