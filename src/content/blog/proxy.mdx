@@ -61,14 +61,14 @@ const handler = {
   }
 }
 
-const wannerEatASpecificFood = new Proxy(foods, handler)
+const hoge = new Proxy(foods, handler)
 
-console.log(wannerEatASpecificFood.yakiton);
-console.log(wannerEatASpecificFood.yakkiniku);
-console.log(wannerEatASpecificFood.sashimi);
+console.log(hoge.yakiton);//やきとんが食べたい
+console.log(hoge.yakkiniku);//焼肉が食べたい
+console.log(hoge.sashimi);//刺身が食べたい
 ```
 
-`wannerEatASpecificFood` が`foods`の代理となり、プロパティへのアクセスに割り込んで、返却するデータを加工している。
+`hoge` が`foods`の代理となり、返却するデータを加工している。
 
 ### `Proxy`のハンドラー関数
 
@@ -446,6 +446,36 @@ Vue版ではキャッシュ関連の処理が`createMotionComponent`内にあり
 
 と書かれている。React版と同様に、一度生成したHTMLタグのMotionコンポーネントをキャッシュして再利用することで、不要なコンポーネントの再生成を防いでいる。
 
+#### 実は以前は`create`プロパティはなかった
+
+余談にはなるが、`create`プロパティはなかった。
+カスタムコンポーネントにアニメーションシステムを適応する時は
+
+```ts
+const Component = motion(MyComponent);
+```
+
+と記述していた。
+
+そもそも、現コードでは`deprecatedFactoryFunction`となっている。
+
+つまり**非推奨のファクトリ関数**だと。
+
+疑問に思ってAIと一緒にPRを辿ってみた。
+
+https://github.com/motiondivision/motion/pull/2778
+
+https://github.com/motiondivision/motion/pull/2787
+
+上記PRが関係していることがわかった。
+
+どうやらRSCに適応するためのようだ。
+
+ここからはAIとの壁打ちにもなるが、RSCはClient ComponentをSiriアライズ可能な静的名称として扱う必要があるため、`Proxy`で動的に作るのは相性が悪いと言われている。
+
+Motionは「RSC対応エントリーポイントを対応したがnamespace importではProxyや動的プロパティと関数宣言`motion(Component)`を維持できないので`motion.create`にする」とPRにも明記されている。
+
+
 ### Vue.js
 
 :::info
@@ -472,6 +502,8 @@ https://ja.vuejs.org/guide/extras/reactivity-in-depth.html#what-is-reactivity
 `Proxy`に関して、Vue.jsのドキュメントにも使っていると書いてあった。
 
 > リアクティブオブジェクトは JavaScript プロキシ であり、通常のオブジェクトと同じように動作します。違いは、Vue がリアクティブオブジェクトのすべてのプロパティのアクセスや変更をインターセプトして、リアクティビティーの追跡やトリガーを行うことができることです。
+
+本当にそうなのかをコードを追っていくと確かに`Proxy`を発見した。
 
 ```ts
 function createReactiveObject(
@@ -546,6 +578,13 @@ class BaseReactiveHandler implements ProxyHandler<Target> {
 
     //なんか色々やっているよ〜
 
+
+    if (!isReadonly) {
+      // effectの依存関係などを管理する
+      track(target, TrackOpTypes.GET, key);
+    }
+
+    //この後も色々やっているねぇ〜
     return res
   }
 }
